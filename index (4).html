@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090b12">
+  <meta name="description" content="A practical Verilog and Icarus Verilog learning and debugging workspace.">
+  <title>Iverilog Error Guide &amp; Debug Lab</title>
+  <style>
+    /* ---- Theme and reset ---- */
+    :root {
+      color-scheme: dark;
+      --bg: #090b12;
+      --bg-soft: #0d101a;
+      --panel: #111521;
+      --panel-2: #151a28;
+      --line: #242b3a;
+      --text: #edf0fa;
+      --muted: #929bb0;
+      --muted-2: #68738b;
+      --blue: #7187ff;
+      --blue-2: #9b78ff;
+      --cyan: #74d9fa;
+      --green: #71deb0;
+      --orange: #ffbd7a;
+      --red: #ff8298;
+      --shadow: 0 18px 60px #0005;
+      --radius: 17px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg: #f4f6fb;
+      --bg-soft: #edf0f8;
+      --panel: #fff;
+      --panel-2: #f7f8fc;
+      --line: #dfe4ef;
+      --text: #171b2a;
+      --muted: #626d83;
+      --muted-2: #8490a7;
+      --blue: #536cf0;
+      --blue-2: #8256e8;
+      --cyan: #1389aa;
+      --green: #19855e;
+      --orange: #b56a14;
+      --red: #cf3f5b;
+      --shadow: 0 18px 55px #24345b12;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 78% 7%, #4231a51a 0, transparent 33rem),
+        radial-gradient(ellipse at 10% 38%, #1b68b30d 0, transparent 34rem), var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.55;
+      transition: background .25s, color .25s;
+    }
+    button, input, textarea, select { font: inherit; }
+    button { color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    ::selection { background: #7a6bff66; }
+    .wrap { width: min(1160px, calc(100% - 44px)); margin: 0 auto; }
+    .muted { color: var(--muted); }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--cyan); font: 700 11px/1 var(--mono);
+      text-transform: uppercase; letter-spacing: .14em;
+    }
+    .eyebrow::before { content: ""; width: 18px; height: 1px; background: currentColor; }
+    .section { padding: 78px 0; }
+    .section-head { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-bottom: 28px; }
+    .section-head h2 { margin: 12px 0 8px; font-size: clamp(27px, 4vw, 38px); letter-spacing: -.04em; line-height: 1.13; }
+    .section-head p { margin: 0; max-width: 600px; color: var(--muted); }
+    .btn {
+      min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      border: 1px solid var(--line); border-radius: 10px; padding: 0 15px;
+      background: var(--panel-2); color: var(--text); font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: transform .18s, border-color .18s, box-shadow .18s, background .18s;
+    }
+    .btn:hover { transform: translateY(-2px); border-color: #7187ff77; }
+    .btn:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+    .btn-primary {
+      border-color: transparent; color: white;
+      background: linear-gradient(110deg, #5978f4, #9062ed);
+      box-shadow: 0 8px 28px #765dff33;
+    }
+    .btn-primary:hover { box-shadow: 0 10px 34px #765dff55; border-color: transparent; }
+    .btn-quiet { background: transparent; }
+    .icon { width: 17px; height: 17px; display: inline-block; vertical-align: middle; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px;
+      padding: 5px 9px; font-size: 11px; font-weight: 650; color: var(--muted); background: var(--bg-soft);
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px currentColor; }
+
+    /* ---- Navigation and hero ---- */
+    .topbar {
+      position: sticky; z-index: 20; top: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+      background: color-mix(in srgb, var(--bg) 83%, transparent); backdrop-filter: blur(18px);
+    }
+    .nav { height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 13px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+    .brand-mark {
+      display: grid; place-items: center; width: 35px; height: 35px; border-radius: 11px;
+      color: #fff; font: 800 14px var(--mono); background: linear-gradient(135deg, #6384ff, #a05dea);
+      box-shadow: 0 4px 20px #8c60ed44;
+    }
+    .nav-links { display: flex; gap: 25px; align-items: center; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .nav-links a { transition: color .18s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .theme-btn { width: 40px; min-height: 40px; padding: 0; font-size: 17px; }
+    .menu-btn { display: none; width: 40px; min-height: 40px; padding: 0; font-size: 19px; }
+    .hero { padding: 78px 0 68px; overflow: hidden; position: relative; }
+    .hero-grid { display: grid; grid-template-columns: 1.08fr .92fr; gap: 55px; align-items: center; }
+    .hero h1 { margin: 17px 0 16px; max-width: 680px; font-size: clamp(44px, 6.3vw, 72px); letter-spacing: -.065em; line-height: .99; }
+    .gradient-text { background: linear-gradient(100deg, #94a6ff 9%, #b990ff 51%, #6edcf4 95%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero-copy { max-width: 570px; margin: 0; color: var(--muted); font-size: 16px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 26px; }
+    .hero-meta { display: flex; gap: 17px; flex-wrap: wrap; margin-top: 27px; font-size: 11px; color: var(--muted); }
+    .hero-meta span { display: flex; gap: 7px; align-items: center; }
+    .hero-visual {
+      position: relative; min-height: 340px; border: 1px solid #8291ff36; border-radius: 22px;
+      background: linear-gradient(155deg, #151a2acb, #0d1120e8 65%); box-shadow: var(--shadow);
+      overflow: hidden; transform: perspective(900px) rotateY(-4deg) rotateX(2deg);
+    }
+    [data-theme="light"] .hero-visual { background: linear-gradient(155deg, #fff, #f0f2fb 65%); }
+    .hero-visual::before {
+      content: ""; position: absolute; width: 300px; height: 300px; border-radius: 50%; top: -120px; right: -70px;
+      background: #7858ff35; filter: blur(50px);
+    }
+    .window-head { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 15px 17px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+    .window-dots { display: flex; gap: 5px; }
+    .window-dots i { width: 7px; height: 7px; border-radius: 50%; background: #ff7687; }
+    .window-dots i:nth-child(2) { background: #f0be66; }.window-dots i:nth-child(3) { background: #60d3a2; }
+    .hero-code { position: relative; padding: 21px 22px; color: var(--muted); font: 12px/1.9 var(--mono); white-space: pre-wrap; }
+    .hero-code .kw { color: #c18cff; }.hero-code .type { color: #77d9ee; }.hero-code .name { color: #f0c178; }.hero-code .comment { color: #71809a; }
+    .hero-status {
+      position: absolute; right: 16px; bottom: 16px; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--panel); padding: 10px 13px; box-shadow: var(--shadow); font-size: 11px;
+    }
+    .hero-status b { color: var(--green); }
+
+    /* ---- Editor ---- */
+    .editor-shell {
+      overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--panel); box-shadow: var(--shadow);
+    }
+    .editor-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; padding: 13px 16px; border-bottom: 1px solid var(--line); }
+    .file-label { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; }
+    .file-label .file-icon { display: grid; place-items: center; width: 26px; height: 28px; border-radius: 6px; color: var(--cyan); background: #55c9ef12; font: 700 10px var(--mono); }
+    .editor-tools { display: flex; gap: 7px; flex-wrap: wrap; }
+    .editor-tools .btn { min-height: 34px; padding: 0 11px; font-size: 11px; }
+    .editor-main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(245px, .72fr); min-height: 330px; }
+    .code-pane { min-width: 0; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--bg-soft) 78%, var(--panel)); }
+    .code-top { display: flex; justify-content: space-between; align-items: center; height: 39px; border-bottom: 1px solid var(--line); padding: 0 15px; color: var(--muted-2); font: 10px var(--mono); }
+    .editor-input-wrap { display: grid; grid-template-columns: 42px minmax(0, 1fr); min-height: 285px; max-height: 480px; overflow: auto; }
+    .line-numbers { padding: 14px 10px 14px 0; color: var(--muted-2); text-align: right; user-select: none; font: 12px/1.72 var(--mono); }
+    .code-entry { position: relative; min-width: 0; }
+    #codeInput, #codeHighlight {
+      position: absolute; inset: 0; margin: 0; width: 100%; height: 100%; min-height: 285px; padding: 14px 16px;
+      border: 0; outline: 0; resize: none; white-space: pre; overflow: auto; tab-size: 2;
+      font: 12px/1.72 var(--mono); letter-spacing: 0;
+    }
+    #codeInput { z-index: 2; color: transparent; caret-color: var(--text); background: transparent; -webkit-text-fill-color: transparent; }
+    #codeInput::selection { background: #728aff55; }
+    #codeHighlight { z-index: 1; pointer-events: none; color: var(--text); background: transparent; }
+    .tok-kw { color: #c795ff; }.tok-type { color: #74d6ec; }.tok-num { color: #f2bd77; }.tok-comment { color: #74809a; font-style: italic; }.tok-string { color: #9de1b8; }
+    .console-pane { min-width: 0; background: var(--panel); }
+    .console-head { height: 39px; display: flex; justify-content: space-between; align-items: center; padding: 0 14px; border-bottom: 1px solid var(--line); font-size: 11px; font-weight: 750; }
+    .console-content { padding: 14px; font: 11px/1.65 var(--mono); color: var(--muted); }
+    .console-message { border: 1px solid #e7ad552d; border-radius: 10px; padding: 11px; color: var(--orange); background: #e7ad5509; }
+    .console-message b { display: block; margin-bottom: 5px; color: var(--text); font-family: var(--sans); font-size: 11px; }
+    .console-hint { margin-top: 12px; color: var(--muted-2); }
+    .console-output { margin-top: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .statusbar { padding: 8px 14px; border-top: 1px solid var(--line); color: var(--muted-2); font: 10px var(--mono); display: flex; justify-content: space-between; gap: 10px; }
+    .tool-under { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 3px 0; color: var(--muted); font-size: 11px; }
+
+    /* ---- Cards / guide / assistant ---- */
+    .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+    .quick-card, .example-card, .lesson-card, .error-card {
+      border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+    }
+    .quick-card:hover, .example-card:hover, .lesson-card:hover, .error-card:hover { transform: translateY(-3px); border-color: #7588ff69; box-shadow: 0 14px 38px #03061122; }
+    .quick-card { padding: 18px; }
+    .quick-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; margin-bottom: 14px; color: var(--cyan); background: #50d2ed12; font-size: 16px; }
+    .quick-card:nth-child(2) .quick-icon { color: #b88bff; background: #a06eff15; }
+    .quick-card:nth-child(3) .quick-icon { color: var(--green); background: #67dda515; }
+    .quick-card h3 { margin: 0 0 6px; font-size: 13px; }.quick-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .toolbar-row { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    .field {
+      min-height: 40px; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px;
+      background: var(--panel); color: var(--text); font-size: 12px;
+    }
+    .search-wrap { position: relative; flex: 1; min-width: 210px; }
+    .search-wrap input { width: 100%; padding-left: 35px; }
+    .search-wrap span { position: absolute; left: 12px; top: 9px; color: var(--muted-2); }
+    .filter-select { min-width: 155px; }
+    .guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+    .error-card { padding: 18px; }
+    .error-top { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+    .error-top h3 { margin: 0; font-size: 14px; letter-spacing: -.015em; }
+    .error-code { display: inline-block; margin-top: 5px; color: var(--cyan); font: 10px var(--mono); }
+    .error-card p { margin: 11px 0; color: var(--muted); font-size: 12px; }
+    .solution { border-left: 2px solid var(--green); padding: 8px 0 8px 11px; color: var(--muted); font-size: 11px; }
+    .solution b { color: var(--green); }
+    .mini-code { margin-top: 10px; border: 1px solid var(--line); border-radius: 9px; padding: 10px; overflow-x: auto; background: var(--bg-soft); color: var(--text); font: 10px/1.6 var(--mono); }
+    .empty-state { grid-column: 1 / -1; padding: 34px 20px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); text-align: center; font-size: 13px; }
+    .assist-layout { display: grid; grid-template-columns: .92fr 1.08fr; gap: 16px; }
+    .assist-input, .assist-results { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 19px; }
+    .assist-input h3, .assist-results h3 { margin: 0 0 6px; font-size: 14px; }
+    .assist-input > p, .assist-results > p { margin: 0 0 15px; color: var(--muted); font-size: 11px; }
+    #assistInput { width: 100%; min-height: 190px; padding: 13px; border: 1px solid var(--line); border-radius: 10px; resize: vertical; background: var(--bg-soft); color: var(--text); font: 11px/1.7 var(--mono); }
+    .assist-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 11px; flex-wrap: wrap; }
+    .assist-actions small { color: var(--muted-2); font-size: 10px; }
+    .result-list { display: grid; gap: 9px; }
+    .result-item { border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; background: var(--bg-soft); }
+    .result-item h4 { margin: 0 0 5px; color: var(--orange); font-size: 11px; }
+    .result-item p { margin: 0; color: var(--muted); font-size: 11px; }
+    .result-item code { font: 10px var(--mono); color: var(--cyan); }
+
+    /* ---- Examples and lessons ---- */
+    .example-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .example-card { padding: 15px; }
+    .example-card h3 { margin: 10px 0 4px; font-size: 12px; }
+    .example-card p { min-height: 34px; margin: 0 0 13px; color: var(--muted); font-size: 10px; }
+    .example-card .btn { width: 100%; min-height: 33px; font-size: 10px; }
+    .example-symbol { color: var(--blue); font: 700 17px var(--mono); }
+    .lesson-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+    .lesson-card { padding: 17px; }
+    .lesson-card h3 { margin: 0 0 7px; font-size: 13px; }
+    .lesson-card p { margin: 0 0 12px; color: var(--muted); font-size: 11px; }
+    .lesson-card code { color: var(--cyan); font: 10px/1.6 var(--mono); }
+    .concepts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+    .concept { padding: 13px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+    .concept b { display: block; margin-bottom: 4px; font-size: 11px; }
+    .concept span { color: var(--muted); font-size: 10px; }
+    footer { border-top: 1px solid var(--line); padding: 24px 0 34px; color: var(--muted-2); font-size: 11px; }
+    .footer-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .hidden { display: none !important; }
+    .toast {
+      position: fixed; z-index: 40; right: 20px; bottom: 20px; max-width: min(370px, calc(100vw - 40px));
+      padding: 12px 15px; border: 1px solid var(--line); border-radius: 11px;
+      color: var(--text); background: var(--panel); box-shadow: var(--shadow);
+      opacity: 0; transform: translateY(8px); pointer-events: none; transition: .2s; font-size: 12px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 900px) {
+      .hero-grid { gap: 28px; grid-template-columns: 1fr 1fr; }
+      .hero h1 { font-size: clamp(42px, 7vw, 60px); }
+      .example-grid { grid-template-columns: repeat(3, 1fr); }
+      .nav-links { gap: 15px; }
+    }
+    @media (max-width: 720px) {
+      .wrap { width: min(100% - 30px, 570px); }
+      .nav { height: 62px; }
+      .brand { font-size: 11px; }
+      .nav-links {
+        display: none; position: absolute; top: 61px; left: 0; right: 0; padding: 12px 20px 18px;
+        border-bottom: 1px solid var(--line); background: var(--bg); flex-direction: column; align-items: stretch; gap: 0;
+      }
+      .nav-links.open { display: flex; }
+      .nav-links a { padding: 11px 0; }
+      .nav-actions .start-nav { display: none; }
+      .menu-btn { display: inline-flex; }
+      .hero { padding: 52px 0 48px; }
+      .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+      .hero h1 { max-width: 560px; font-size: clamp(43px, 11vw, 62px); }
+      .hero-visual { min-height: 300px; transform: none; }
+      .section { padding: 58px 0; }
+      .section-head { display: block; }
+      .section-head .tag { margin-top: 14px; }
+      .editor-main { grid-template-columns: 1fr; }
+      .code-pane { border-right: 0; border-bottom: 1px solid var(--line); }
+      .console-pane { min-height: 150px; }
+      .quick-grid { grid-template-columns: 1fr; }
+      .quick-card { display: flex; gap: 13px; align-items: start; }
+      .quick-icon { flex: 0 0 34px; margin: 0; }
+      .guide-grid { grid-template-columns: 1fr; }
+      .assist-layout { grid-template-columns: 1fr; }
+      .example-grid { grid-template-columns: repeat(2, 1fr); }
+      .lesson-grid { grid-template-columns: 1fr 1fr; }
+      .concepts { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 420px) {
+      .wrap { width: calc(100% - 24px); }
+      .brand { max-width: 200px; white-space: normal; line-height: 1.15; }
+      .brand-mark { flex: 0 0 34px; }
+      .hero-meta { gap: 10px; }
+      .editor-toolbar { align-items: flex-start; }
+      .editor-tools { width: 100%; }
+      .editor-tools .btn { flex: 1; }
+      .example-grid, .lesson-grid, .concepts { grid-template-columns: 1fr; }
+      .tool-under { align-items: flex-start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap nav">
+      <a class="brand" href="#home" aria-label="Iverilog Error Guide home">
+        <span class="brand-mark">iv</span><span>Iverilog Error Guide <span style="color:var(--muted)">&amp; Debug Lab</span></span>
+      </a>
+      <nav class="nav-links" id="navLinks" aria-label="Main navigation">
+        <a href="#lab">Debug Lab</a><a href="#guide">Error Guide</a><a href="#examples">Examples</a><a href="#learn">Learn</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="btn theme-btn" id="themeToggle" type="button" aria-label="Switch color theme" title="Toggle theme">☼</button>
+        <a class="btn btn-primary start-nav" href="#lab">Open Lab <span aria-hidden="true">↗</span></a>
+        <button class="btn menu-btn" id="menuToggle" type="button" aria-label="Open navigation menu" aria-expanded="false">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="home">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="eyebrow">A practical Verilog workspace</span>
+          <h1>Master Verilog<br><span class="gradient-text">Debugging.</span></h1>
+          <p class="hero-copy">Understand compiler messages, catch common mistakes, and build confidence with a hands-on Verilog guide made for learners and hardware developers.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#lab">Start Debugging <span aria-hidden="true">→</span></a>
+            <a class="btn btn-quiet" href="#guide">Explore Error Guide <span aria-hidden="true">↓</span></a>
+          </div>
+          <div class="hero-meta">
+            <span><i class="dot"></i> Free learning tools</span>
+            <span>⌘ &nbsp;Runs locally in your browser</span>
+            <span>◈ &nbsp;No account required</span>
+          </div>
+        </div>
+        <div class="hero-visual" aria-label="Illustration of Verilog code editor">
+          <div class="window-head"><span class="window-dots"><i></i><i></i><i></i></span><span>half_adder.v</span><span>VERILOG</span></div>
+          <div class="hero-code"><span class="comment">// A tiny circuit, clearly explained</span>
+<span class="kw">module</span> <span class="name">half_adder</span> (
+  <span class="kw">input</span>  <span class="type">wire</span> a, b,
+  <span class="kw">output</span> <span class="type">wire</span> sum, carry
+);
+  <span class="kw">assign</span> sum   = a ^ b;
+  <span class="kw">assign</span> carry = a &amp; b;
+<span class="kw">endmodule</span></div>
+          <div class="hero-status"><b>● Learning mode</b><br><span class="muted">Understand every line</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="lab">
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="eyebrow">Interactive workspace</span><h2>Write. Inspect. Understand.</h2><p>Experiment with Verilog examples and get clear, honest feedback. This browser-only editor does not invoke a real iverilog compiler.</p></div>
+          <span class="tag"><i class="dot"></i> Rule checks available</span>
+        </div>
+        <div class="editor-shell">
+          <div class="editor-toolbar">
+            <div class="file-label"><span class="file-icon">V</span><span id="fileName">untitled.v</span><span class="tag">Verilog</span></div>
+            <div class="editor-tools">
+              <button class="btn btn-primary" id="runBtn" type="button" title="Run browser-based checks">▶ &nbsp;Check code</button>
+              <button class="btn" id="loadBtn" type="button">↗ &nbsp;Load example</button>
+              <button class="btn" id="copyBtn" type="button">▣ &nbsp;Copy</button>
+              <button class="btn" id="clearBtn" type="button">⌫ &nbsp;Clear</button>
+            </div>
+          </div>
+          <div class="editor-main">
+            <div class="code-pane">
+              <div class="code-top"><span>● &nbsp;editor</span><span>Verilog · UTF-8</span></div>
+              <div class="editor-input-wrap" id="editorScroll">
+                <div class="line-numbers" id="lineNumbers" aria-hidden="true"></div>
+                <div class="code-entry">
+                  <pre id="codeHighlight" aria-hidden="true"></pre>
+                  <textarea id="codeInput" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Verilog code editor"></textarea>
+                </div>
+              </div>
+            </div>
+            <aside class="console-pane" aria-live="polite">
+              <div class="console-head"><span>Output</span><span class="tag">DEMO MODE</span></div>
+              <div class="console-content" id="consoleContent">
+                <div class="console-message"><b>Compiler not connected</b>This standalone page does not compile or simulate code. “Check code” runs basic JavaScript rule checks only.</div>
+                <div class="console-hint">Load an example or edit the sample, then choose <b>Check code</b> for common-issue hints.</div>
+              </div>
+              <div class="statusbar"><span>Browser rule checks · no compiler</span><span id="cursorStatus">Ln 1, Col 1</span></div>
+            </aside>
+          </div>
+        </div>
+        <div class="tool-under"><span>Checks flag common patterns only; they are not a substitute for compiling with Icarus Verilog.</span><span id="charCount">0 characters</span></div>
+        <div class="quick-grid">
+          <article class="quick-card"><span class="quick-icon">⌘</span><div><h3>Syntax-aware editing</h3><p>Readable Verilog highlighting with a line-number gutter. Your code stays on this page.</p></div></article>
+          <article class="quick-card"><span class="quick-icon">⌕</span><div><h3>Understand the message</h3><p>Plain-English hints point to common missing tokens and structural mistakes.</p></div></article>
+          <article class="quick-card"><span class="quick-icon">↗</span><div><h3>Start from a working pattern</h3><p>Load a circuit or testbench example into the editor and make it your own.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="guide">
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="eyebrow">Plain-English reference</span><h2>Error guide</h2><p>Look up common Verilog and Icarus Verilog messages, their likely causes, and the first fix to try.</p></div>
+          <span class="tag">6 common issues</span>
+        </div>
+        <div class="toolbar-row">
+          <label class="search-wrap"><span aria-hidden="true">⌕</span><input class="field" id="guideSearch" type="search" placeholder="Search errors, causes, fixes…" aria-label="Search error guide"></label>
+          <select class="field filter-select" id="categoryFilter" aria-label="Filter errors by category">
+            <option value="all">All categories</option><option value="syntax">Syntax</option><option value="types">Signals &amp; types</option><option value="simulation">Simulation</option><option value="structure">Module structure</option>
+          </select>
+        </div>
+        <div class="guide-grid" id="guideGrid"></div>
+      </div>
+    </section>
+
+    <section class="section" id="assistant">
+      <div class="wrap">
+        <div class="section-head">
+          <div><span class="eyebrow">Transparent browser checks</span><h2>Debugging assistant</h2><p>Paste Verilog code or an error message to check for a small set of recognizable issues. No AI analysis or server request is involved.</p></div>
+          <span class="tag">Rule-based · JavaScript</span>
+        </div>
+        <div class="assist-layout">
+          <div class="assist-input">
+            <h3>Your code or error message</h3><p>Checks look for common patterns like missing semicolons, unmatched delimiters, and likely undeclared signals.</p>
+            <textarea id="assistInput" spellcheck="false" placeholder="Paste a Verilog snippet or compiler message here…"></textarea>
+            <div class="assist-actions"><small>Your text is analyzed in this browser only.</small><button class="btn btn-primary" id="analyzeBtn" type="button">Analyze patterns →</button></div>
+          </div>
+          <div class="assist-results" aria-live="polite">
+            <h3>What I found</h3><p>Run the checks to see possible issues and next steps.</p>
+            <div class="result-list" id="assistantResults"><div class="empty-state">No analysis yet. Paste a snippet or error message to begin.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="examples">
+      <div class="wrap">
+        <div class="section-head"><div><span class="eyebrow">Learn by modifying</span><h2>Code examples</h2><p>Small, self-contained patterns you can load into the editor, inspect, and adapt.</p></div><span class="tag">8 starter circuits</span></div>
+        <div class="example-grid" id="exampleGrid"></div>
+      </div>
+    </section>
+
+    <section class="section" id="learn">
+      <div class="wrap">
+        <div class="section-head"><div><span class="eyebrow">Start with the building blocks</span><h2>Verilog, one concept at a time</h2><p>Get oriented with the pieces you’ll see in nearly every small design.</p></div></div>
+        <div class="lesson-grid">
+          <article class="lesson-card"><h3>01 · Modules and ports</h3><p>A module describes a hardware block. Its ports are the signals that connect it to the outside.</p><code>module block(input wire a, output wire y);</code></article>
+          <article class="lesson-card"><h3>02 · Wires and registers</h3><p><code>wire</code> models a connected signal. In Verilog, <code>reg</code> is a procedural variable; it does not by itself guarantee a physical register.</p><code>wire ready; reg [3:0] count;</code></article>
+          <article class="lesson-card"><h3>03 · Continuous assignments</h3><p>Use <code>assign</code> for a continuously driven net. The right-hand expression updates as its inputs change.</p><code>assign y = (a &amp; b) | c;</code></article>
+          <article class="lesson-card"><h3>04 · Always blocks</h3><p>Combinational logic usually uses <code>always @*</code> and assigns every output on every path.</p><code>always @* begin<br>&nbsp; y = a ^ b;<br>end</code></article>
+          <article class="lesson-card"><h3>05 · Clocked logic</h3><p>Use a clock edge in the sensitivity list for sequential logic. Nonblocking assignment models state updates.</p><code>always @(posedge clk)<br>&nbsp; q &lt;= d;</code></article>
+          <article class="lesson-card"><h3>06 · Testbenches</h3><p>A testbench has no physical ports. It drives inputs, observes outputs, and can end a simulation with <code>$finish</code>.</p><code>initial begin<br>&nbsp; a = 0; #10 a = 1;<br>&nbsp; $finish;<br>end</code></article>
+        </div>
+        <div class="concepts">
+          <div class="concept"><b>Semicolons</b><span>End declarations, assignments, and procedural statements with <code>;</code>.</span></div>
+          <div class="concept"><b>Blocking <code>=</code> vs. nonblocking <code>&lt;=</code></b><span>Commonly use <code>=</code> in combinational blocks and <code>&lt;=</code> in clocked blocks.</span></div>
+          <div class="concept"><b>Compile vs. simulate</b><span><code>iverilog</code> compiles; <code>vvp</code> runs a compiled simulation image.</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap footer-row"><span>◈ &nbsp;Iverilog Error Guide &amp; Debug Lab</span><span>An educational companion — always verify designs with a real simulator.</span></div></footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+    // Example snippets are also used by the editor's Load example action.
+    const examples = [
+      { title: "AND gate", symbol: "A · B", note: "A one-bit combinational AND.", code: `module and_gate(input wire a, b, output wire y);\n  assign y = a & b;\nendmodule` },
+      { title: "OR gate", symbol: "A + B", note: "A one-bit combinational OR.", code: `module or_gate(input wire a, b, output wire y);\n  assign y = a | b;\nendmodule` },
+      { title: "NOT gate", symbol: "¬ A", note: "Invert a single input bit.", code: `module not_gate(input wire a, output wire y);\n  assign y = ~a;\nendmodule` },
+      { title: "2:1 multiplexer", symbol: "MUX", note: "Choose one of two inputs.", code: `module mux2(input wire a, b, sel, output wire y);\n  assign y = sel ? b : a;\nendmodule` },
+      { title: "D flip-flop", symbol: "D → Q", note: "Capture data on a rising edge.", code: `module dff(input wire clk, d, output reg q);\n  always @(posedge clk) begin\n    q <= d;\n  end\nendmodule` },
+      { title: "4-bit counter", symbol: "0123", note: "Resettable synchronous counter.", code: `module counter4(input wire clk, rst, output reg [3:0] count);\n  always @(posedge clk) begin\n    if (rst) count <= 4'b0000;\n    else count <= count + 1'b1;\n  end\nendmodule` },
+      { title: "Testbench", symbol: "TB", note: "Drive a simple input sequence.", code: `module tb_and;\n  reg a, b;\n  wire y;\n\n  and_gate dut(.a(a), .b(b), .y(y));\n\n  initial begin\n    a = 0; b = 0;\n    #10 a = 1;\n    #10 b = 1;\n    #10 $finish;\n  end\nendmodule` },
+      { title: "Full adder", symbol: "Σ", note: "Add two bits and carry-in.", code: `module full_adder(input wire a, b, cin, output wire sum, cout);\n  assign sum = a ^ b ^ cin;\n  assign cout = (a & b) | (a & cin) | (b & cin);\nendmodule` }
+    ];
+    const errors = [
+      { category: "syntax", label: "Syntax", title: "Syntax error near token", code: "syntax error", summary: "The parser found something unexpected at or before the reported token. The actual mistake is often on the line just above it.", causes: "Missing semicolon, misspelled keyword, or mismatched parentheses.", fix: "Check the indicated line and the previous statement; balance (), [], and begin/end pairs.", sample: "assign y = a & b;" },
+      { category: "syntax", label: "Syntax", title: "Missing semicolon", code: "unexpected endmodule / syntax error", summary: "A declaration or statement may not have been terminated, so the next keyword appears in an unexpected place.", causes: "A missing ; after an assignment, port declaration, or procedural statement.", fix: "Add a semicolon at the end of the preceding statement. Do not put one after an end keyword.", sample: "wire y;\nassign y = a | b;" },
+      { category: "types", label: "Signals & types", title: "Unable to bind / unknown identifier", code: "Unable to bind ...", summary: "A name used in an expression could not be resolved in the current scope.", causes: "Typo, missing declaration, or signal not connected to the module.", fix: "Check spelling and declare the signal with an appropriate type and width.", sample: "wire result;\nassign result = a ^ b;" },
+      { category: "types", label: "Signals & types", title: "Net driven by procedural assignment", code: "not a valid l-value / reg required", summary: "A signal assigned inside an always or initial block may have been declared as a net.", causes: "In traditional Verilog, procedural assignments need a variable such as reg.", fix: "Declare the procedurally assigned signal as reg (or use an appropriate SystemVerilog type).", sample: "output reg q;\nalways @(posedge clk) q <= d;" },
+      { category: "simulation", label: "Simulation", title: "Unknown or high-impedance values", code: "x / z in output", summary: "A simulated signal can become unknown (x) or undriven/high-impedance (z).", causes: "Uninitialized state, conflicting drivers, or a missing connection.", fix: "Initialize testbench inputs, reset sequential state, and check that every output is driven.", sample: "initial begin\n  rst = 1'b1;\n  #10 rst = 1'b0;\nend" },
+      { category: "structure", label: "Module structure", title: "Unknown module type", code: "Unknown module type", summary: "The design instantiates a module definition that the compiler cannot find.", causes: "Source file omitted from the compile command, or module name does not match.", fix: "Pass every required .v file to iverilog and verify the declared module name.", sample: "iverilog -o sim top.v and_gate.v" }
+    ];
+    const starterCode = `// Try editing this half adder\nmodule half_adder (\n  input wire a, b,\n  output wire sum, carry\n);\n  assign sum = a ^ b;\n  assign carry = a & b;\nendmodule`;
+    const codeInput = document.getElementById("codeInput");
+    const codeHighlight = document.getElementById("codeHighlight");
+    const lineNumbers = document.getElementById("lineNumbers");
+    const toast = document.getElementById("toast");
+    let toastTimer;
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+    }
+    function highlight(source) {
+      // Escape first, then wrap Verilog tokens; avoid interpreting user HTML.
+      let html = escapeHtml(source);
+      const comments = [];
+      html = html.replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g, text => {
+        const id = comments.push(text) - 1;
+        return `___COMMENT_${id}___`;
+      });
+      html = html.replace(/("(?:[^"\\]|\\.)*")/g, '<span class="tok-string">$1</span>');
+      html = html.replace(/\b(module|endmodule|input|output|inout|wire|reg|logic|assign|always|always_ff|always_comb|initial|begin|end|if|else|case|endcase|posedge|negedge|parameter|localparam|integer|timescale|or)\b/g, '<span class="tok-kw">$1</span>');
+      html = html.replace(/\b(1'b[01xz]+|[0-9]+'[sS]?[bBoOdDhH][0-9a-fA-F_xXzZ?]+|\d+)\b/g, '<span class="tok-num">$1</span>');
+      html = html.replace(/___COMMENT_(\d+)___/g, (_, index) => `<span class="tok-comment">${comments[Number(index)]}</span>`);
+      return html + (source.endsWith("\n") ? " " : "");
+    }
+    function syncEditor() {
+      const code = codeInput.value;
+      codeHighlight.innerHTML = highlight(code);
+      lineNumbers.textContent = Array.from({ length: Math.max(1, code.split("\n").length) }, (_, i) => i + 1).join("\n");
+      document.getElementById("charCount").textContent = `${code.length.toLocaleString()} characters`;
+      updateCursor();
+    }
+    function updateCursor() {
+      const before = codeInput.value.slice(0, codeInput.selectionStart);
+      const lines = before.split("\n");
+      document.getElementById("cursorStatus").textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+    }
+    function showToast(message) {
+      toast.textContent = message; toast.classList.add("show");
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+    }
+    function setCode(code, name = "untitled.v") {
+      codeInput.value = code;
+      document.getElementById("fileName").textContent = name;
+      syncEditor(); codeInput.focus();
+    }
+    function renderExamples() {
+      document.getElementById("exampleGrid").innerHTML = examples.map((item, index) =>
+        `<article class="example-card"><span class="example-symbol">${escapeHtml(item.symbol)}</span><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.note)}</p><button class="btn" type="button" data-example="${index}">Load into editor ↗</button></article>`
+      ).join("");
+    }
+    function renderGuide() {
+      const query = document.getElementById("guideSearch").value.trim().toLowerCase();
+      const category = document.getElementById("categoryFilter").value;
+      const visible = errors.filter(item => (category === "all" || category === item.category) &&
+        [item.title, item.code, item.summary, item.causes, item.fix, item.label].join(" ").toLowerCase().includes(query));
+      const grid = document.getElementById("guideGrid");
+      if (!visible.length) {
+        grid.innerHTML = '<div class="empty-state">No matching entries. Try a different search or choose “All categories.”</div>';
+        return;
+      }
+      grid.innerHTML = visible.map(item => `<article class="error-card">
+        <div class="error-top"><div><h3>${escapeHtml(item.title)}</h3><span class="error-code">${escapeHtml(item.code)}</span></div><span class="tag">${escapeHtml(item.label)}</span></div>
+        <p>${escapeHtml(item.summary)}</p><p><b style="color:var(--text)">Likely cause:</b> ${escapeHtml(item.causes)}</p>
+        <div class="solution"><b>Try this</b><br>${escapeHtml(item.fix)}</div><pre class="mini-code">${escapeHtml(item.sample)}</pre>
+      </article>`).join("");
+    }
+    function collectChecks(code) {
+      const found = [];
+      const push = (title, text, snippet = "") => found.push({ title, text, snippet });
+      const isErrorText = /syntax error|unable to bind|unknown module|not a valid l-value|error:/i.test(code);
+      if (isErrorText) {
+        if (/syntax error/i.test(code)) push("Compiler message mentions a syntax error", "Icarus usually reports a nearby token, but the cause can be earlier. Check the previous statement for a missing semicolon or unmatched delimiter.");
+        if (/unable to bind|unknown identifier/i.test(code)) push("Possible unresolved signal or module", "Check the spelling and scope of the name. If it is a module, make sure its source file is included in the compile command.");
+        if (/not a valid l-value|reg required/i.test(code)) push("Possible procedural assignment type mismatch", "Traditional Verilog signals assigned inside always/initial blocks generally need a variable declaration such as reg.");
+      }
+      // Mask comments and strings so brackets and keywords inside them do not count.
+      const clean = code.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ").replace(/"(?:[^"\\]|\\.)*"/g, '""');
+      const open = { "(": ")", "[": "]", "{": "}" }, stack = [];
+      for (let i = 0; i < clean.length; i++) {
+        const c = clean[i];
+        if (open[c]) stack.push({ c, line: clean.slice(0, i).split("\n").length });
+        else if ([")", "]", "}"].includes(c)) {
+          const last = stack.pop();
+          if (!last || open[last.c] !== c) { push("Mismatched delimiter", `A closing “${c}” does not match the opening delimiters seen earlier. Check (), [], and {} pairs.`); break; }
+        }
+      }
+      if (stack.length) push("Unclosed delimiter", `There is an opening “${stack[stack.length - 1].c}” without a matching close. Check the surrounding expression or port list.`);
+      const modules = (clean.match(/\bmodule\b/g) || []).length;
+      const ends = (clean.match(/\bendmodule\b/g) || []).length;
+      if (modules !== ends) push("Module / endmodule count differs", `Found ${modules} “module” keyword(s) and ${ends} “endmodule” keyword(s). Each module needs one matching endmodule.`);
+      if (/\bassign\b[^;\n]*(?:\n|$)/m.test(clean) && !/\bassign\b[^;\n]*;/.test(clean)) push("Possible missing semicolon", "A continuous assign statement may not end with a semicolon. Check this statement and the line immediately above it.");
+      if (/\b(?:input|output|inout)\b[^;]*\)[\s\S]*\bendmodule\b/.test(clean) && !/;\s*[\s\S]*\bendmodule\b/.test(clean)) push("Review declarations and statement endings", "Verilog declarations and statements usually end with semicolons. Check the module header and declarations.");
+      const beginCount = (clean.match(/\bbegin\b/g) || []).length;
+      const endCount = (clean.match(/\bend\b/g) || []).length;
+      if (beginCount !== endCount) push("begin / end count differs", `Found ${beginCount} “begin” keyword(s) and ${endCount} “end” keyword(s). Balance each procedural block.`);
+      if (/\balways\s*@\s*\(\s*(?:posedge|negedge)\b/.test(clean) && /(?<![<>=!])=(?!=)/.test(clean)) push("Review assignments in clocked logic", "Blocking assignment (=) appears in code with an edge-triggered always block. Nonblocking assignment (<=) is commonly used for sequential state updates; verify the assignment is inside that block.");
+      if (!code.trim()) push("Nothing to check yet", "Paste Verilog code or a compiler error message, then run the checks again.");
+      if (!found.length) push("No common issue patterns detected", "These basic checks found no targeted patterns. They do not parse Verilog or prove the design compiles; verify it with iverilog.");
+      return found;
+    }
+    function renderCheckResults(items, target) {
+      target.innerHTML = items.map(item => `<article class="result-item"><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.text)}${item.snippet ? ` <code>${escapeHtml(item.snippet)}</code>` : ""}</p></article>`).join("");
+    }
+    function runChecks() {
+      const code = codeInput.value;
+      const results = collectChecks(code);
+      const consoleEl = document.getElementById("consoleContent");
+      consoleEl.innerHTML = `<div class="console-message"><b>Demo mode · browser rule checks only</b>No compiler or simulator was run. These hints may miss errors or flag valid Verilog.</div><div class="console-output">${results.map(x => `• ${escapeHtml(x.title)} — ${escapeHtml(x.text)}`).join("\n\n")}</div>`;
+    }
+    // Initial page setup.
+    codeInput.value = starterCode;
+    syncEditor();
+    renderExamples();
+    renderGuide();
+
+    codeInput.addEventListener("input", syncEditor);
+    codeInput.addEventListener("scroll", () => { codeHighlight.scrollTop = codeInput.scrollTop; codeHighlight.scrollLeft = codeInput.scrollLeft; lineNumbers.scrollTop = codeInput.scrollTop; });
+    codeInput.addEventListener("click", updateCursor);
+    codeInput.addEventListener("keyup", updateCursor);
+    codeInput.addEventListener("keydown", event => {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        const start = codeInput.selectionStart, end = codeInput.selectionEnd;
+        codeInput.setRangeText("  ", start, end, "end"); syncEditor();
+      }
+    });
+    document.getElementById("runBtn").addEventListener("click", runChecks);
+    document.getElementById("clearBtn").addEventListener("click", () => { setCode("", "untitled.v"); document.getElementById("consoleContent").innerHTML = '<div class="console-message"><b>Compiler not connected</b>Editor cleared. This page does not compile code; use Check code for browser-side rule hints.</div>'; });
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(codeInput.value);
+        showToast("Code copied to clipboard.");
+      } catch {
+        codeInput.focus(); codeInput.select();
+        const copied = document.execCommand("copy");
+        showToast(copied ? "Code copied to clipboard." : "Clipboard access is unavailable. Select and copy the code manually.");
+      }
+    });
+    document.getElementById("loadBtn").addEventListener("click", () => {
+      const item = examples[Math.floor(Math.random() * examples.length)];
+      setCode(item.code, item.title.toLowerCase().replace(/[^a-z0-9]+/g, "_") + ".v");
+      showToast(`${item.title} loaded into the editor.`);
+    });
+    document.getElementById("exampleGrid").addEventListener("click", event => {
+      const button = event.target.closest("[data-example]");
+      if (!button) return;
+      const item = examples[Number(button.dataset.example)];
+      setCode(item.code, item.title.toLowerCase().replace(/[^a-z0-9]+/g, "_") + ".v");
+      document.getElementById("lab").scrollIntoView({ behavior: "smooth" });
+      showToast(`${item.title} loaded into the editor.`);
+    });
+    document.getElementById("guideSearch").addEventListener("input", renderGuide);
+    document.getElementById("categoryFilter").addEventListener("change", renderGuide);
+    document.getElementById("analyzeBtn").addEventListener("click", () => {
+      renderCheckResults(collectChecks(document.getElementById("assistInput").value), document.getElementById("assistantResults"));
+    });
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem("iverilog-guide-theme", next); } catch { /* Storage can be disabled; theme still changes for this visit. */ }
+      document.getElementById("themeToggle").textContent = next === "light" ? "☾" : "☼";
+      document.getElementById("themeToggle").setAttribute("aria-label", `Switch to ${next === "light" ? "dark" : "light"} theme`);
+    });
+    try {
+      const savedTheme = localStorage.getItem("iverilog-guide-theme");
+      if (savedTheme === "light" || savedTheme === "dark") document.documentElement.dataset.theme = savedTheme;
+      document.getElementById("themeToggle").textContent = document.documentElement.dataset.theme === "light" ? "☾" : "☼";
+    } catch { /* Theme preference is optional. */ }
+    const menuToggle = document.getElementById("menuToggle");
+    const navLinks = document.getElementById("navLinks");
+    menuToggle.addEventListener("click", () => {
+      const open = navLinks.classList.toggle("open");
+      menuToggle.setAttribute("aria-expanded", String(open));
+      menuToggle.setAttribute("aria-label", open ? "Close navigation menu" : "Open navigation menu");
+      menuToggle.textContent = open ? "×" : "☰";
+    });
+    navLinks.addEventListener("click", event => {
+      if (event.target.closest("a")) {
+        navLinks.classList.remove("open");
+        menuToggle.setAttribute("aria-expanded", "false");
+        menuToggle.setAttribute("aria-label", "Open navigation menu");
+        menuToggle.textContent = "☰";
+      }
+    });
+  </script>
+</body>
+</html>
